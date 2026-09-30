@@ -1,16 +1,31 @@
 const express = require("express");
 const app = express();
 
-app.get("/oauth-callback", (req, res) => {
+app.get("/oauth-callback", async (req, res) => {
   const code = req.query.code;
-  if (!code) {
-    return res.send("No code received.");
+  if (!code) return res.send("No code received.");
+
+  try {
+    const response = await fetch("https://api.hubapi.com/oauth/v1/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: process.env.HUBSPOT_CLIENT_ID,
+        client_secret: process.env.HUBSPOT_CLIENT_SECRET,
+        redirect_uri: "https://getleadapp-production.up.railway.app/oauth-callback",
+        code,
+      }),
+    });
+    const data = await response.json();
+    if (data.access_token) {
+      res.send("<h2>Connected! You can close this window.</h2><script>window.close();</script>");
+    } else {
+      res.send(`Error: ${JSON.stringify(data)}`);
+    }
+  } catch (err) {
+    res.send(`Error: ${err.message}`);
   }
-  res.send(`
-    <h2>Connected!</h2>
-    <p>Authorization code received. You can close this window.</p>
-    <script>window.close();</script>
-  `);
 });
 
 app.get("/", (req, res) => res.send("OAuth redirect server running."));
